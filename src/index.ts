@@ -1230,14 +1230,7 @@ export default {
             const id = env.WEBSITE_CHECKER.idFromName(`checker-${location.code}`)
             const checker = env.WEBSITE_CHECKER.get(id, { locationHint: location.code })
             const result = await checker.checkWebsite(targetUrl, location.code, location.name)
-
-            try {
-              // Kill the DO instance after use, to avoid extra resource usage
-              await checker.kill()
-            } catch (err) {
-              // An error here is expected, ignore it
-            }
-
+            await checker.kill()
             return result
           } catch (error) {
             return {
@@ -1359,11 +1352,9 @@ export class WebsiteChecker extends DurableObject {
   }
 
   async kill() {
-    // Throwing an error in `blockConcurrencyWhile` will terminate the Durable Object instance
-    // https://developers.cloudflare.com/durable-objects/api/state/#blockconcurrencywhile
-    this.ctx.blockConcurrencyWhile(async () => {
-      throw 'killed'
-    })
+    // This will delete all the storage associated with this Durable Object instance
+    // This will also delete the Durable Object instance itself
+    await this.ctx.storage.deleteAll();
   }
 
   private async getLocation(): Promise<string> {
